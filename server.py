@@ -325,6 +325,7 @@ def predict_traffic(
     forecast_periods: Annotated[int, "Number of future data points to predict (default: 7)"] = 7,
     granularity: Annotated[str, "Time granularity: time1day, time1hour, or time5minutes (default: time1day)"] = "time1day",
     method: Annotated[str, "linear (OLS regression) or ema (exponential moving average) (default: linear)"] = "linear",
+    alpha: Annotated[float, "EMA smoothing factor 0 < alpha <= 1 (only used when method=ema, default 0.3 — higher = more weight on recent data)"] = 0.3,
     cpcode: Annotated[list[int] | None, "Filter to specific CP code integers; None returns all"] = None,
 ) -> dict:
     """
@@ -359,7 +360,7 @@ def predict_traffic(
     values = [float(row.get(metric, 0)) for row in rows]
 
     try:
-        return run_forecast(timestamps, values, forecast_periods, granularity, metric, method)
+        return run_forecast(timestamps, values, forecast_periods, granularity, metric, method, alpha)
     except Exception as exc:
         raise ToolError(f"Forecast computation failed: {exc}") from exc
 

@@ -52,6 +52,10 @@ def _generate_future_timestamps(
 
     dt = datetime.fromisoformat(last_ts.replace("Z", "+00:00"))
 
+    valid = {"time1day", "time1hour", "time5minutes"}
+    if interval not in valid:
+        raise ValueError(f"Unknown granularity '{interval}'. Must be one of: {sorted(valid)}")
+
     if interval == "time1hour":
         delta = timedelta(hours=1)
     elif interval == "time5minutes":
@@ -165,6 +169,7 @@ def run_forecast(
     interval: str,
     metric: str,
     method: str = "linear",
+    alpha: float = 0.3,
 ) -> dict:
     """
     Run forecast and return a serialisable dict.
@@ -176,6 +181,7 @@ def run_forecast(
         interval:   time granularity — "time1day", "time1hour", or "time5minutes"
         metric:     metric name (for labelling)
         method:     "linear" or "ema"
+        alpha:      EMA smoothing factor 0 < alpha <= 1 (only used when method="ema", default 0.3)
 
     Returns:
         Dict with historical, forecast, summary, and trend info.
@@ -184,7 +190,9 @@ def run_forecast(
         return {"error": "Need at least 3 historical data points for forecasting."}
 
     if method == "ema":
-        result = forecast_ema(timestamps, values, periods, interval, metric)
+        if not (0 < alpha <= 1):
+            raise ValueError(f"alpha must be between 0 (exclusive) and 1 (inclusive), got {alpha}")
+        result = forecast_ema(timestamps, values, periods, interval, metric, alpha=alpha)
     else:
         result = forecast_linear(timestamps, values, periods, interval, metric)
 
