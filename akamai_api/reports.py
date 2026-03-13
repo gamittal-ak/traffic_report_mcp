@@ -78,24 +78,20 @@ def build_cpcode_traffic_body(cpcodes: list[int] | None = None) -> dict:
 
 def build_http_status_body(cpcodes: list[int] | None = None) -> dict:
     """
-    HTTP status breakdown: edge hits by responseClass, filtered to 4xx and 5xx only.
+    HTTP status breakdown: edge hits by responseClass across all classes (2xx, 3xx, 4xx, 5xx).
     Metrics: edgeHitsSum, originHitsSum
     """
-    filters: list[dict] = [
-        {
-            "dimensionName": "responseClass",
-            "operator": "IN_LIST",
-            "expressions": ["4xx", "5xx"],
-        }
-    ]
+    filters: list[dict] = []
     if cpcodes:
         filters.append(_cpcode_filter(cpcodes))
 
-    return {
+    body: dict = {
         "dimensions": ["responseClass"],
         "metrics": ["edgeHitsSum", "originHitsSum"],
-        "filters": filters,
     }
+    if filters:
+        body["filters"] = filters
+    return body
 
 
 def build_offload_body(cpcodes: list[int] | None = None) -> dict:

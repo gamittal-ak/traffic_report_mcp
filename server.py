@@ -233,10 +233,11 @@ def get_http_status_breakdown(
     cpcode: Annotated[list[int] | None, "Filter to specific CP code integers; None returns all"] = None,
 ) -> dict:
     """
-    Get 4xx and 5xx HTTP error hit counts broken down by response class.
+    Get HTTP hit counts broken down by response class (2xx, 3xx, 4xx, 5xx).
 
-    Useful for spotting error rate spikes and diagnosing origin health issues.
-    Returns edgeHitsSum and originHitsSum for each error class.
+    Useful for understanding traffic composition, spotting error rate spikes,
+    and diagnosing origin health issues.
+    Returns edgeHitsSum and originHitsSum for each response class.
     """
     s, e = _resolve_time(start, end)
     switch_key = _resolve_switch_key(account_name)
