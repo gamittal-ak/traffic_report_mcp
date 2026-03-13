@@ -47,10 +47,10 @@ class AkamaiClient:
         account_switch_key: str = "",
     ) -> dict:
         """
-        POST /reporting-api/v2/delivery/traffic/current
+        POST /reporting-api/v2/reports/delivery/traffic/current/data
         Returns traffic data for the given dimensions/metrics/filters and time range.
         """
-        url = f"{self.config.reporting_base_url}/delivery/traffic/current"
+        url = f"{self.config.reporting_base_url}/reports/delivery/traffic/current/data"
         params: dict = {"start": start, "end": end}
         if account_switch_key:
             params["accountSwitchKey"] = account_switch_key

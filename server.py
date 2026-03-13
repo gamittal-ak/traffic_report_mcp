@@ -50,15 +50,21 @@ def _resolve_time(start: str, end: str) -> tuple[str, str]:
 
 
 def _extract_rows(response: dict) -> list[dict]:
-    """Flatten Akamai v2 response into a list of flat dicts."""
+    """Flatten Akamai v2 response into a list of flat dicts.
+
+    The /reports/delivery/traffic/current/data endpoint returns:
+      {"data": [{"dimensions": {"cpcode": "..."}, "metrics": {"edgeBytesSum": ...}}, ...]}
+    Each row's dimensions and metrics are merged into a single flat dict.
+    """
     data = response.get("data", [])
     if not data:
         return []
-    # v2 returns {"columns": [...], "rows": [[v1, v2, ...]]}  OR  list of dicts
-    if isinstance(data, list) and isinstance(data[0], dict):
-        return data
-    columns = response.get("columns", [])
-    return [dict(zip(columns, row)) for row in data]
+    first = data[0]
+    if isinstance(first, dict) and ("dimensions" in first or "metrics" in first):
+        # Nested format: merge dimensions + metrics into one flat dict per row
+        return [{**row.get("dimensions", {}), **row.get("metrics", {})} for row in data]
+    # Fallback: already flat dicts
+    return data
 
 
 # ─────────────────────────────────────────────────────────────
@@ -67,23 +73,18 @@ def _extract_rows(response: dict) -> list[dict]:
 
 @mcp.tool
 def list_accounts(
-    search: Annotated[str, "Account name to search for (minimum 3 characters required)"],
+    search: Annotated[str, "Optional search string to filter accounts by name"] = "",
 ) -> list[dict]:
     """
-    Search for Akamai accounts by name and return their switch keys.
-
-    Requires at least 3 characters to search. The API does not support
-    listing all accounts — you must provide a search term.
+    List all Akamai accounts accessible with the current API credentials.
 
     Returns a list of objects with:
       - accountSwitchKey: pass this value as account_switch_key in other tools
       - accountName: human-readable account label
       - accountId: numeric Akamai account identifier
 
-    Call this first to get the accountSwitchKey needed by all other tools.
+    Always call this first to discover available accounts.
     """
-    if len(search) < 3:
-        raise ToolError("search must be at least 3 characters (e.g. 'Acme' or 'my-').")
     try:
         return get_client().list_account_switch_keys(search=search)
     except Exception as exc:
