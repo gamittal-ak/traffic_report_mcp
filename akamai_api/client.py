@@ -29,16 +29,13 @@ class AkamaiClient:
         self.session.auth = EdgeGridAuth.from_edgerc(edgerc, EDGERC_SECTION)
         self.session.headers.update(HEADERS)
 
-    def list_account_switch_keys(self, search: str = "") -> list[dict]:
+    def list_account_switch_keys(self, search: str) -> list[dict]:
         """
         GET /identity-management/v3/api-clients/self/account-switch-keys
-        Returns list of {accountSwitchKey, accountName, accountId} for all accessible accounts.
+        search is required (min 3 chars). Returns list of {accountSwitchKey, accountName, accountId}.
         """
         url = f"{self.config.base_url}/identity-management/v3/api-clients/self/account-switch-keys"
-        params = {}
-        if search:
-            params["search"] = search
-        resp = self.session.get(url, params=params)
+        resp = self.session.get(url, params={"search": search})
         resp.raise_for_status()
         return resp.json()
 

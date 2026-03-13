@@ -67,18 +67,23 @@ def _extract_rows(response: dict) -> list[dict]:
 
 @mcp.tool
 def list_accounts(
-    search: Annotated[str, "Optional search string to filter accounts by name"] = "",
+    search: Annotated[str, "Account name to search for (minimum 3 characters required)"],
 ) -> list[dict]:
     """
-    List all Akamai accounts accessible with the current API credentials.
+    Search for Akamai accounts by name and return their switch keys.
+
+    Requires at least 3 characters to search. The API does not support
+    listing all accounts — you must provide a search term.
 
     Returns a list of objects with:
       - accountSwitchKey: pass this value as account_switch_key in other tools
       - accountName: human-readable account label
       - accountId: numeric Akamai account identifier
 
-    Always call this first to discover available accounts.
+    Call this first to get the accountSwitchKey needed by all other tools.
     """
+    if len(search) < 3:
+        raise ToolError("search must be at least 3 characters (e.g. 'Acme' or 'my-').")
     try:
         return get_client().list_account_switch_keys(search=search)
     except Exception as exc:
