@@ -106,7 +106,8 @@ Edit your Claude Desktop config file:
       "command": "npx",
       "args": [
         "mcp-remote",
-        "http://localhost:8000/mcp"
+        "http://localhost:8000/mcp",
+        "--allow-http"
       ]
     }
   }
@@ -238,7 +239,7 @@ Claude Desktop config for the remote server:
   "mcpServers": {
     "akamai-traffic": {
       "command": "npx",
-      "args": ["mcp-remote", "http://<LINODE_IP>:8000/mcp"]
+      "args": ["mcp-remote", "http://<LINODE_IP>:8000/mcp", "--allow-http"]
     }
   }
 }
