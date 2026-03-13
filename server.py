@@ -328,6 +328,7 @@ def predict_traffic(
     method: Annotated[str, "linear (OLS regression) or ema (exponential moving average) (default: linear)"] = "linear",
     alpha: Annotated[float, "EMA smoothing factor 0 < alpha <= 1 (only used when method=ema, default 0.3 — higher = more weight on recent data)"] = 0.3,
     cpcode: Annotated[list[int] | None, "Filter to specific CP code integers; None returns all"] = None,
+    hostname: Annotated[list[str] | None, "Filter to specific hostnames, e.g. ['example.akamaized.net']; None returns all"] = None,
 ) -> dict:
     """
     Forecast future traffic based on historical trends.
@@ -339,10 +340,13 @@ def predict_traffic(
     switch_key = _resolve_switch_key(account_name)
 
     body: dict = {"dimensions": [granularity], "metrics": [metric]}
+    filters = []
     if cpcode:
-        body["filters"] = [
-            {"dimensionName": "cpcode", "operator": "IN_LIST", "expressions": cpcode}
-        ]
+        filters.append({"dimensionName": "cpcode", "operator": "IN_LIST", "expressions": cpcode})
+    if hostname:
+        filters.append({"dimensionName": "hostname", "operator": "IN_LIST", "expressions": hostname})
+    if filters:
+        body["filters"] = filters
     body["sortBys"] = [{"name": granularity, "sortOrder": "ASCENDING"}]
 
     try:
