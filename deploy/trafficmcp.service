@@ -1,0 +1,19 @@
+[Unit]
+Description=Akamai Traffic MCP Server
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=deploy
+WorkingDirectory=/opt/trafficMCP
+ExecStart=/opt/trafficMCP/.venv/bin/python server.py
+Restart=on-failure
+RestartSec=10
+EnvironmentFile=/opt/trafficMCP/.env
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=trafficmcp
+
+[Install]
+WantedBy=multi-user.target

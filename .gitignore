@@ -1,0 +1,18 @@
+# Credentials - NEVER commit
+.edgerc
+.env
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+*.egg-info/
+dist/
+build/
+.pytest_cache/
+*.xlsx
+
+# IDE / local tooling
+.claude/
+.vscode/
+.idea/
