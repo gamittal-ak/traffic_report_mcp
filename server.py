@@ -423,4 +423,5 @@ if __name__ == "__main__":
         transport="streamable-http",
         host=SERVER_HOST,
         port=SERVER_PORT,
+        stateless_http=True,
     )
