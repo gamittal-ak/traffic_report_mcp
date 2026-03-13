@@ -42,15 +42,30 @@ def _detect_trend(values: list[float]) -> str:
     return "stable"
 
 
+def _parse_timestamp(ts) -> "datetime":
+    """Parse an Akamai timestamp — either a Unix int (seconds or ms) or ISO-8601 string."""
+    from datetime import datetime, timezone
+    if isinstance(ts, (int, float)):
+        # Akamai returns seconds; guard against accidental milliseconds (>1e10)
+        epoch = ts / 1000 if ts > 1e10 else ts
+        return datetime.fromtimestamp(epoch, tz=timezone.utc)
+    return datetime.fromisoformat(str(ts).replace("Z", "+00:00"))
+
+
+def _ts_to_iso(ts) -> str:
+    """Normalise any Akamai timestamp to an ISO-8601 UTC string."""
+    return _parse_timestamp(ts).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
 def _generate_future_timestamps(
-    last_ts: str,
+    last_ts,
     interval: str,
     periods: int,
 ) -> list[str]:
     """Generate future ISO-8601 timestamps based on the interval granularity."""
-    from datetime import datetime, timedelta, timezone
+    from datetime import timedelta
 
-    dt = datetime.fromisoformat(last_ts.replace("Z", "+00:00"))
+    dt = _parse_timestamp(last_ts)
 
     valid = {"time1day", "time1hour", "time5minutes"}
     if interval not in valid:
@@ -90,13 +105,14 @@ def forecast_linear(
     future_x = np.arange(n, n + periods, dtype=float)
     forecast_vals = [max(0.0, float(v)) for v in poly(future_x)]  # clamp to >=0
 
+    iso_timestamps = [_ts_to_iso(t) for t in timestamps]
     future_ts = _generate_future_timestamps(timestamps[-1], interval, periods)
     avg_hist = float(np.mean(y))
     avg_fc = float(np.mean(forecast_vals)) if forecast_vals else 0.0
     pct = ((avg_fc - avg_hist) / avg_hist * 100) if avg_hist != 0 else 0.0
 
     return ForecastResult(
-        historical_timestamps=timestamps,
+        historical_timestamps=iso_timestamps,
         historical_values=values,
         forecast_timestamps=future_ts,
         forecast_values=forecast_vals,
@@ -143,13 +159,14 @@ def forecast_ema(
     last_ema = float(ema[-1])
     forecast_vals = [max(0.0, last_ema + avg_diff * (i + 1)) for i in range(periods)]
 
+    iso_timestamps = [_ts_to_iso(t) for t in timestamps]
     future_ts = _generate_future_timestamps(timestamps[-1], interval, periods)
     avg_hist = float(np.mean(y))
     avg_fc = float(np.mean(forecast_vals)) if forecast_vals else 0.0
     pct = ((avg_fc - avg_hist) / avg_hist * 100) if avg_hist != 0 else 0.0
 
     return ForecastResult(
-        historical_timestamps=timestamps,
+        historical_timestamps=iso_timestamps,
         historical_values=values,
         forecast_timestamps=future_ts,
         forecast_values=forecast_vals,
