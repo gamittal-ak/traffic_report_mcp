@@ -39,6 +39,28 @@ class AkamaiClient:
         resp.raise_for_status()
         return resp.json()
 
+    def get_cpcodes(
+        self,
+        account_switch_key: str = "",
+        contract_id: str = "",
+        group_id: str = "",
+    ) -> dict:
+        """
+        GET /papi/v1/cpcodes
+        Returns CP codes accessible to the credential. contractId and groupId are optional filters.
+        """
+        url = f"{self.config.base_url}/papi/v1/cpcodes"
+        params: dict = {}
+        if account_switch_key:
+            params["accountSwitchKey"] = account_switch_key
+        if contract_id:
+            params["contractId"] = contract_id
+        if group_id:
+            params["groupId"] = group_id
+        resp = self.session.get(url, params=params)
+        resp.raise_for_status()
+        return resp.json()
+
     def fetch_traffic(
         self,
         body: dict,
