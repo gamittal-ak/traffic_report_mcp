@@ -95,6 +95,23 @@ def _extract_rows(response: dict) -> list[dict]:
     return data
 
 
+# Metrics that are raw byte counts and should be converted to GB for readability
+_BYTE_METRICS = {"edgeBytesSum", "originBytesSum", "midgressBytesSum"}
+_BYTES_PER_GB = 1_073_741_824  # 2^30
+
+
+def _convert_bytes_to_gb(rows: list[dict]) -> list[dict]:
+    """Return a new list of rows with known byte metrics converted to GB (rounded to 3 dp)."""
+    converted = []
+    for row in rows:
+        new_row = dict(row)
+        for field in _BYTE_METRICS:
+            if field in new_row and new_row[field] is not None:
+                new_row[field] = round(new_row[field] / _BYTES_PER_GB, 3)
+        converted.append(new_row)
+    return converted
+
+
 # ─────────────────────────────────────────────────────────────
 # Tool 1 — Account search (returns names only, no switch keys)
 # ─────────────────────────────────────────────────────────────
@@ -189,7 +206,8 @@ def get_traffic_by_hostname(
     body = build_hostname_traffic_body(cpcode, hostname)
     try:
         raw = get_client().fetch_traffic(body, s, e, switch_key)
-        return {"rows": _extract_rows(raw), "start": s, "end": e}
+        rows = _convert_bytes_to_gb(_extract_rows(raw))
+        return {"rows": rows, "start": s, "end": e, "note": "edgeBytesSum, originBytesSum, midgressBytesSum are in GB"}
     except Exception as exc:
         raise ToolError(f"Failed to fetch hostname traffic: {exc}") from exc
 
@@ -216,7 +234,8 @@ def get_traffic_by_cpcode(
     body = build_cpcode_traffic_body(cpcode)
     try:
         raw = get_client().fetch_traffic(body, s, e, switch_key)
-        return {"rows": _extract_rows(raw), "start": s, "end": e}
+        rows = _convert_bytes_to_gb(_extract_rows(raw))
+        return {"rows": rows, "start": s, "end": e, "note": "edgeBytesSum, originBytesSum, midgressBytesSum are in GB"}
     except Exception as exc:
         raise ToolError(f"Failed to fetch CP code traffic: {exc}") from exc
 
@@ -249,6 +268,7 @@ def get_http_status_breakdown(
         raise ToolError(f"Failed to fetch HTTP status breakdown: {exc}") from exc
 
 
+
 # ─────────────────────────────────────────────────────────────
 # Tool 6 — Edge/origin offload
 # ─────────────────────────────────────────────────────────────
@@ -271,7 +291,8 @@ def get_edge_origin_offload(
     body = build_offload_body(cpcode)
     try:
         raw = get_client().fetch_traffic(body, s, e, switch_key)
-        return {"rows": _extract_rows(raw), "start": s, "end": e}
+        rows = _convert_bytes_to_gb(_extract_rows(raw))
+        return {"rows": rows, "start": s, "end": e, "note": "edgeBytesSum, originBytesSum are in GB"}
     except Exception as exc:
         raise ToolError(f"Failed to fetch offload data: {exc}") from exc
 
@@ -308,7 +329,12 @@ def get_raw_traffic(
         ]
     try:
         raw = get_client().fetch_traffic(body, s, e, switch_key)
-        return {"rows": _extract_rows(raw), "start": s, "end": e}
+        byte_fields_requested = _BYTE_METRICS & set(metrics)
+        rows = _convert_bytes_to_gb(_extract_rows(raw)) if byte_fields_requested else _extract_rows(raw)
+        result: dict = {"rows": rows, "start": s, "end": e}
+        if byte_fields_requested:
+            result["note"] = f"{', '.join(sorted(byte_fields_requested))} are in GB"
+        return result
     except Exception as exc:
         raise ToolError(f"Failed to fetch raw traffic: {exc}") from exc
 
@@ -362,12 +388,19 @@ def predict_traffic(
         )
 
     timestamps = [row.get(granularity, "") for row in rows]
-    values = [float(row.get(metric, 0)) for row in rows]
+    raw_values = [float(row.get(metric, 0)) for row in rows]
+
+    is_bytes_metric = metric in _BYTE_METRICS
+    values = [v / _BYTES_PER_GB for v in raw_values] if is_bytes_metric else raw_values
 
     try:
-        return run_forecast(timestamps, values, forecast_periods, granularity, metric, method, alpha)
+        result = run_forecast(timestamps, values, forecast_periods, granularity, metric, method, alpha)
     except Exception as exc:
         raise ToolError(f"Forecast computation failed: {exc}") from exc
+
+    if is_bytes_metric:
+        result["note"] = f"{metric} values are in GB"
+    return result
 
 
 # ─────────────────────────────────────────────────────────────
